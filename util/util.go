@@ -47,6 +47,11 @@ func ToBytes(data any) []byte {
 }
 
 func toBytes(v reflect.Value) []byte {
+	// call Bytes() if the type implements Bytes() []byte
+	if bytesFunc := v.MethodByName("Bytes"); bytesFunc.IsValid() {
+		return bytesFunc.Call(nil)[0].Bytes()
+	}
+
 	buf := make([]byte, 0)
 	switch v.Kind() {
 	case reflect.Uint8:

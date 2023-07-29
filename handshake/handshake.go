@@ -72,7 +72,7 @@ func StartHandshake(conn *record.Conn, config *core.Config) error {
 	}
 	message := util.ToBytes(newHandshake(
 		handshakeTypeClientHello,
-		clientHello.bytes(),
+		util.ToBytes(clientHello),
 	))
 	conn.Push(
 		contentTypeHandshake,
@@ -112,7 +112,7 @@ func StartHandshake(conn *record.Conn, config *core.Config) error {
 			return err
 		}
 	}
-	ecdhPrivKey := clientHello.privateKey.(*ecdh.PrivateKey)
+	ecdhPrivKey := clientHello.privateKey
 	sharedKey, err := ecdhPrivKey.ECDH(serverECDHPubKey)
 	if err != nil {
 		return err

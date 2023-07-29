@@ -1,7 +1,7 @@
 package handshake
 
 import (
-	"crypto"
+	"crypto/ecdh"
 
 	core "github.com/arailly/mytls13"
 	"github.com/arailly/mytls13/record"
@@ -111,10 +111,10 @@ type clientHello struct {
 	extensions         *extensions
 
 	// not export
-	privateKey crypto.PrivateKey
+	privateKey *ecdh.PrivateKey
 }
 
-func (ch *clientHello) bytes() []byte {
+func (ch *clientHello) Bytes() []byte {
 	data := util.ToBytes(ch.version)
 	data = append(data, ch.random...)
 	data = append(data, ch.sessionID)

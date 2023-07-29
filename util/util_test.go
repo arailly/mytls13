@@ -60,3 +60,26 @@ func TestToBytes(t *testing.T) {
 		t.Error(diff)
 	}
 }
+
+type bytesMaker struct {
+	a []byte
+	b []byte
+	c []byte
+}
+
+func (m *bytesMaker) Bytes() []byte {
+	return append(m.a, m.b...)
+}
+
+func TestBytesMethod(t *testing.T) {
+	m := &bytesMaker{
+		a: []byte{0x00, 0x01},
+		b: []byte{0x02, 0x03},
+		c: []byte{0x04, 0x05},
+	}
+	expected := []byte{0x00, 0x01, 0x02, 0x03}
+	actual := util.ToBytes(m)
+	if diff := cmp.Diff(actual, expected); diff != "" {
+		t.Error(diff)
+	}
+}
