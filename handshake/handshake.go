@@ -126,13 +126,11 @@ func StartHandshake(conn *record.Conn, config *core.Config) error {
 	header, body := readHandshakeMessage(conn)
 	handshakeMsgs = append(handshakeMsgs, header...)
 	handshakeMsgs = append(handshakeMsgs, body...)
-	conn.IncrementReadSeqNum()
 
 	// Certificate
 	header, body = readHandshakeMessage(conn)
 	handshakeMsgs = append(handshakeMsgs, header...)
 	handshakeMsgs = append(handshakeMsgs, body...)
-	conn.IncrementReadSeqNum()
 
 	// skip Certificate Request Context
 	certificates, err := parseCertificates(body[4:])
@@ -163,7 +161,6 @@ func StartHandshake(conn *record.Conn, config *core.Config) error {
 	}
 	handshakeMsgs = append(handshakeMsgs, header...)
 	handshakeMsgs = append(handshakeMsgs, body...)
-	conn.IncrementReadSeqNum()
 
 	// Finished
 	header, body = readHandshakeMessage(conn)
@@ -176,7 +173,6 @@ func StartHandshake(conn *record.Conn, config *core.Config) error {
 	}
 	handshakeMsgs = append(handshakeMsgs, header...)
 	handshakeMsgs = append(handshakeMsgs, body...)
-	conn.IncrementReadSeqNum()
 
 	// Change Cipher Spec
 	conn.Push(

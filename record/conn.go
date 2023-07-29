@@ -81,7 +81,7 @@ func (c *Conn) StartCipherWrite() {
 	c.state.cipherWrite = true
 }
 
-func (c *Conn) IncrementReadSeqNum() {
+func (c *Conn) incrementReadSeqNum() {
 	c.state.readSeqNum++
 }
 
@@ -170,6 +170,7 @@ func (c *Conn) Read(b []byte) (int, error) {
 				c.state.readSeqNum,
 				fragment,
 			)
+			c.incrementReadSeqNum()
 			if err != nil {
 				return 0, err
 			}

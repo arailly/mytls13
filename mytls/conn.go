@@ -74,7 +74,6 @@ func (c *Conn) Read(b []byte) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	c.conn.IncrementReadSeqNum()
 	return n, nil
 }
 
