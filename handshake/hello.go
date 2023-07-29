@@ -2,6 +2,7 @@ package handshake
 
 import (
 	"crypto/ecdh"
+	"errors"
 
 	core "github.com/arailly/mytls13"
 	"github.com/arailly/mytls13/record"
@@ -193,6 +194,19 @@ type serverHello struct {
 	cipherSuite       uint16
 	compressionMethod uint8
 	extensions        *extensions
+
+	// not export
+	publicKey *ecdh.PublicKey
+}
+
+func (sh *serverHello) Bytes() []byte {
+	data := util.ToBytes(sh.serverVersion)
+	data = append(data, sh.random...)
+	data = append(data, sh.sessionId)
+	data = append(data, util.ToBytes(sh.cipherSuite)...)
+	data = append(data, sh.compressionMethod)
+	data = append(data, util.ToBytes(sh.extensions)...)
+	return data
 }
 
 func newServerHello(
@@ -230,4 +244,44 @@ func ParseExtensions(b []byte) []*extension {
 		})
 	}
 	return exts
+}
+
+func parseServerHello(hs *handshake) (*serverHello, error) {
+	if hs.msgType != handshakeTypeServerHello {
+		return nil, errors.New("not server hello")
+	}
+	body := hs.body
+
+	offset := 2
+	serverRandom := body[offset : offset+32]
+	_ = serverRandom
+	offset += 32
+	sessionIDLen := int(body[offset])
+	offset += 1 + sessionIDLen
+	cipherSuite := util.ToUint16(body[offset : offset+2])
+	_ = cipherSuite
+	offset += 2 + 1
+	extensionLen := int(util.ToUint16(body[offset : offset+2]))
+	offset += 2
+	exts := ParseExtensions(body[offset : offset+extensionLen])
+	var err error
+	var serverECDHPubKey *ecdh.PublicKey
+	for _, ext := range exts {
+		if ext.extensionType != extTypeKeyShare {
+			continue
+		}
+		offset := 2
+		length := int(util.ToUint16(ext.extensionData[offset : offset+2]))
+		offset += 2
+		serverECDHPubKey, err = ellipticCurve.NewPublicKey(
+			ext.extensionData[offset : offset+length])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &serverHello{
+		random:      serverRandom,
+		cipherSuite: cipherSuite,
+		publicKey:   serverECDHPubKey,
+	}, nil
 }

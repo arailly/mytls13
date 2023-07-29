@@ -60,6 +60,23 @@ func readHandshakeMessage(conn *record.Conn) ([]byte, []byte) {
 	return header, body
 }
 
+func readHandshake(conn *record.Conn) (*handshake, error) {
+	header := make([]byte, 4)
+	if _, err := conn.Read(header); err != nil {
+		return nil, err
+	}
+	length := util.Uint24(header[1:])
+	body := make([]byte, length.Int())
+	if _, err := conn.Read(body); err != nil {
+		return nil, err
+	}
+	return &handshake{
+		msgType: header[0],
+		length:  length,
+		body:    body,
+	}, nil
+}
+
 func StartHandshake(conn *record.Conn, config *core.Config) error {
 	conn.Keys.SetEarlySecret(nil)
 
@@ -82,38 +99,18 @@ func StartHandshake(conn *record.Conn, config *core.Config) error {
 	handshakeMsgs := message
 
 	// Server Hello
-	header, body := readHandshakeMessage(conn)
-	handshakeMsgs = append(handshakeMsgs, header...)
-	handshakeMsgs = append(handshakeMsgs, body...)
+	handshakeMsg, err := readHandshake(conn)
+	if err != nil {
+		return err
+	}
+	handshakeMsgs = append(handshakeMsgs, util.ToBytes(handshakeMsg)...)
 
-	offset := 2
-	serverRandom := body[offset : offset+32]
-	_ = serverRandom
-	offset += 32
-	sessionIDLen := int(body[offset])
-	offset += 1 + sessionIDLen
-	cipherSuite := util.ToUint16(body[offset : offset+2])
-	_ = cipherSuite
-	offset += 2 + 1
-	extensionLen := int(util.ToUint16(body[offset : offset+2]))
-	offset += 2
-	exts := ParseExtensions(body[offset : offset+extensionLen])
-	var serverECDHPubKey *ecdh.PublicKey
-	for _, ext := range exts {
-		if ext.extensionType != extTypeKeyShare {
-			continue
-		}
-		offset := 2
-		length := int(util.ToUint16(ext.extensionData[offset : offset+2]))
-		offset += 2
-		serverECDHPubKey, err = ellipticCurve.NewPublicKey(
-			ext.extensionData[offset : offset+length])
-		if err != nil {
-			return err
-		}
+	serverHello, err := parseServerHello(handshakeMsg)
+	if err != nil {
+		return err
 	}
 	ecdhPrivKey := clientHello.privateKey
-	sharedKey, err := ecdhPrivKey.ECDH(serverECDHPubKey)
+	sharedKey, err := ecdhPrivKey.ECDH(serverHello.publicKey)
 	if err != nil {
 		return err
 	}
@@ -126,7 +123,7 @@ func StartHandshake(conn *record.Conn, config *core.Config) error {
 	conn.StartCipherRead()
 
 	// Encrypted Extensions
-	header, body = readHandshakeMessage(conn)
+	header, body := readHandshakeMessage(conn)
 	handshakeMsgs = append(handshakeMsgs, header...)
 	handshakeMsgs = append(handshakeMsgs, body...)
 	conn.IncrementReadSeqNum()
@@ -152,7 +149,7 @@ func StartHandshake(conn *record.Conn, config *core.Config) error {
 
 	// Certificate Verify
 	header, body = readHandshakeMessage(conn)
-	offset = 2
+	offset := 2
 	signatureLen := int(util.ToUint16(body[offset : offset+2]))
 	offset += 2
 	sig := body[offset : offset+signatureLen]
