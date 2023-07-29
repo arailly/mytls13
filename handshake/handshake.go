@@ -64,15 +64,8 @@ func StartHandshake(conn *record.Conn, config *core.Config) error {
 	conn.Keys.SetEarlySecret(nil)
 
 	// Client Hello
-	rng := util.NewConstRand()
-	ecdhPrivKey, err := ellipticCurve.GenerateKey(rng)
-	if err != nil {
-		panic(err)
-	}
-	ecdhPubKey := ecdhPrivKey.PublicKey().Bytes()
 	clientHello, err := newClientHello(
 		config.ServerName,
-		ecdhPubKey,
 	)
 	if err != nil {
 		return err
@@ -119,6 +112,7 @@ func StartHandshake(conn *record.Conn, config *core.Config) error {
 			return err
 		}
 	}
+	ecdhPrivKey := clientHello.privateKey.(*ecdh.PrivateKey)
 	sharedKey, err := ecdhPrivKey.ECDH(serverECDHPubKey)
 	if err != nil {
 		return err

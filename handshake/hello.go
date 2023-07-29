@@ -162,19 +162,27 @@ func newBasicExtensions(serverName string, keyExchange []byte) *extensions {
 
 func newClientHello(
 	serverName string,
-	keyExchange []byte,
 ) (*clientHello, error) {
 	rng := util.NewConstRand()
 	clientRandom := make([]byte, 32)
 	rng.Read(clientRandom)
 	cipherSuites := []uint16{core.TLS_AES_128_GCM_SHA256}
+
+	ecdhPrivKey, err := ellipticCurve.GenerateKey(rng)
+	if err != nil {
+		return nil, err
+	}
+	ecdhPubKey := ecdhPrivKey.PublicKey().Bytes()
+
 	return &clientHello{
 		version:            record.ProtocolVersionTLS12,
 		random:             clientRandom,
 		sessionID:          0x00,
 		cipherSuites:       newCipherSuites(cipherSuites),
 		compressionMethods: 0x0100,
-		extensions:         newBasicExtensions(serverName, keyExchange),
+		extensions:         newBasicExtensions(serverName, ecdhPubKey),
+
+		privateKey: ecdhPrivKey,
 	}, nil
 }
 
