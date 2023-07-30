@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	core "github.com/arailly/mytls13"
+	"github.com/arailly/mytls13/alert"
 	"github.com/arailly/mytls13/appdata"
 	"github.com/arailly/mytls13/handshake"
 	"github.com/arailly/mytls13/record"
@@ -83,11 +84,10 @@ func (c *Conn) Send(b []byte) error {
 	return c.conn.Flush()
 }
 
-// func (c *Conn) Close() {
-// 	alert.SendAlert(
-// 		c.conn,
-// 		alert.AlertLevelWarning,
-// 		alert.AlertDescCloseNotify,
-// 	)
-// 	c.conn.Close()
-// }
+func (c *Conn) Close() error {
+	err := alert.Send(c.conn, alert.AlertDescCloseNotify)
+	if err != nil {
+		return err
+	}
+	return c.conn.Close()
+}

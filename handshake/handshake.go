@@ -196,7 +196,6 @@ func StartHandshake(conn *record.Conn, config *core.Config) error {
 	))
 	conn.Push(contentTypeHandshake, message)
 	conn.Flush()
-	conn.IncrementWriteSeqNum()
 
 	conn.Keys.SetAppSecret(handshakeMsgs)
 	conn.ResetReadSeqNum()

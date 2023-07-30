@@ -69,8 +69,8 @@ type Conn struct {
 	recvBuf []byte
 }
 
-func (c *Conn) Close() {
-	c.netConn.Close()
+func (c *Conn) Close() error {
+	return c.netConn.Close()
 }
 
 func (c *Conn) StartCipherRead() {
@@ -89,7 +89,7 @@ func (c *Conn) ResetReadSeqNum() {
 	c.state.readSeqNum = 0
 }
 
-func (c *Conn) IncrementWriteSeqNum() {
+func (c *Conn) incrementWriteSeqNum() {
 	c.state.writeSeqNum++
 }
 
@@ -124,6 +124,7 @@ func (c *Conn) Push(
 			c.state.writeSeqNum,
 			plaintext,
 		)
+		c.incrementWriteSeqNum()
 		if err != nil {
 			return err
 		}

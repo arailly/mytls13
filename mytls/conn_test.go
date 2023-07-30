@@ -85,6 +85,11 @@ func TestClient(t *testing.T) {
 	if diff := cmp.Diff(expected, actual); diff != "" {
 		t.Error(diff)
 	}
+
+	// exercise
+	if err := conn.Close(); err != nil {
+		t.Error(err)
+	}
 }
 
 // func TestHTTPS(t *testing.T) {
