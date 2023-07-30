@@ -36,7 +36,12 @@ func newCertificate(x509Certs []*x509.Certificate) *certificate {
 	}
 }
 
-func parseCertificates(certMsg []byte) ([]*x509.Certificate, error) {
+func parseCertificates(hs *handshake) ([]*x509.Certificate, error) {
+	if hs.msgType != handshakeTypeCertificate {
+		return nil, errors.New("invalid message type")
+	}
+
+	certMsg := hs.body[4:]
 	certs := make([]*x509.Certificate, 0)
 	offset := 0
 	for {

@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	core "github.com/arailly/mytls13"
+	"github.com/arailly/mytls13/appdata"
 	"github.com/arailly/mytls13/handshake"
 	"github.com/arailly/mytls13/record"
 )
@@ -77,15 +78,10 @@ func (c *Conn) Read(b []byte) (int, error) {
 	return n, nil
 }
 
-// func (c *Conn) Send(b []byte) {
-// 	c.conn.SendBuffer(
-// 		record.ContentTypeApplicationData,
-// 		record.ProtocolVersionTLS12,
-// 		b,
-// 	)
-// 	c.conn.Flush()
-// 	c.conn.IncrementWriteSeqNum()
-// }
+func (c *Conn) Send(b []byte) error {
+	appdata.Send(c.conn, b)
+	return c.conn.Flush()
+}
 
 // func (c *Conn) Close() {
 // 	alert.SendAlert(

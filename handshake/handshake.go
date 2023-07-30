@@ -123,17 +123,21 @@ func StartHandshake(conn *record.Conn, config *core.Config) error {
 	conn.StartCipherRead()
 
 	// Encrypted Extensions
-	header, body := readHandshakeMessage(conn)
-	handshakeMsgs = append(handshakeMsgs, header...)
-	handshakeMsgs = append(handshakeMsgs, body...)
+	handshakeMsg, err = readHandshake(conn)
+	if err != nil {
+		return err
+	}
+	handshakeMsgs = append(handshakeMsgs, util.ToBytes(handshakeMsg)...)
 
 	// Certificate
-	header, body = readHandshakeMessage(conn)
-	handshakeMsgs = append(handshakeMsgs, header...)
-	handshakeMsgs = append(handshakeMsgs, body...)
+	handshakeMsg, err = readHandshake(conn)
+	if err != nil {
+		return err
+	}
+	handshakeMsgs = append(handshakeMsgs, util.ToBytes(handshakeMsg)...)
 
 	// skip Certificate Request Context
-	certificates, err := parseCertificates(body[4:])
+	certificates, err := parseCertificates(handshakeMsg)
 	if err != nil {
 		return err
 	}
@@ -146,7 +150,7 @@ func StartHandshake(conn *record.Conn, config *core.Config) error {
 	}
 
 	// Certificate Verify
-	header, body = readHandshakeMessage(conn)
+	header, body := readHandshakeMessage(conn)
 	offset := 2
 	signatureLen := int(util.ToUint16(body[offset : offset+2]))
 	offset += 2

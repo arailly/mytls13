@@ -3,6 +3,7 @@ package mytls_test
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"io"
 	"os"
 	"testing"
 
@@ -51,7 +52,7 @@ func TestClient(t *testing.T) {
 	expected := []byte("hello world")
 	go func() {
 		conn, _ := l.Accept()
-		conn.Write(expected)
+		io.Copy(conn, conn)
 		conn.Close()
 	}()
 	config := &core.Config{
@@ -61,22 +62,23 @@ func TestClient(t *testing.T) {
 
 	// exercise
 	conn, err := mytls.Dial("tcp", l.Addr().String(), config)
-
-	// verify
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// setup
-	actual := make([]byte, len(expected))
+	// exercise
+	if err := conn.Send(expected); err != nil {
+		t.Fatal(err)
+	}
 
 	// exercise
+	actual := make([]byte, len(expected))
 	n, err := conn.Read(actual)
-
-	// verify
 	if err != nil {
 		t.Error(err)
 	}
+
+	// verify
 	if n != len(expected) {
 		t.Error(n)
 	}
@@ -84,3 +86,26 @@ func TestClient(t *testing.T) {
 		t.Error(diff)
 	}
 }
+
+// func TestHTTPS(t *testing.T) {
+// 	cacert, err := util.LoadCertificate(
+// 		"../config/Starfield Services Root Certificate Authority - G2.der",
+// 	)
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	config := &core.Config{
+// 		RootCAs: []*x509.Certificate{cacert},
+// 	}
+// 	conn, err := mytls.Dial("tcp", "www.cybozu.com:443", config)
+// 	if err != nil {
+// 		t.Fatal(err)
+// 	}
+// 	defer conn.Close()
+// 	conn.Send([]byte("GET / HTTP/1.1\r\nHOST: www.cybozu.com\r\n\r\n"))
+// 	data := make([]byte, 8)
+// 	conn.Read(data)
+// 	if string(data) != "HTTP/1.1" {
+// 		t.Errorf(string(data))
+// 	}
+// }
