@@ -92,25 +92,28 @@ func TestClient(t *testing.T) {
 	}
 }
 
-// func TestHTTPS(t *testing.T) {
-// 	cacert, err := util.LoadCertificate(
-// 		"../config/Starfield Services Root Certificate Authority - G2.der",
-// 	)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	config := &core.Config{
-// 		RootCAs: []*x509.Certificate{cacert},
-// 	}
-// 	conn, err := mytls.Dial("tcp", "www.cybozu.com:443", config)
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	defer conn.Close()
-// 	conn.Send([]byte("GET / HTTP/1.1\r\nHOST: www.cybozu.com\r\n\r\n"))
-// 	data := make([]byte, 8)
-// 	conn.Read(data)
-// 	if string(data) != "HTTP/1.1" {
-// 		t.Errorf(string(data))
-// 	}
-// }
+func TestHTTPS(t *testing.T) {
+	cacert, err := util.LoadCertificate(
+		"../config/Starfield Services Root Certificate Authority - G2.der",
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	config := &core.Config{
+		RootCAs: []*x509.Certificate{cacert},
+	}
+	conn, err := mytls.Dial("tcp", "www.cybozu.com:443", config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	conn.Send([]byte("GET / HTTP/1.1\r\nHOST: www.cybozu.com\r\n\r\n"))
+	data := make([]byte, 8)
+	_, err = conn.Read(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "HTTP/1.1" {
+		t.Errorf(string(data))
+	}
+}

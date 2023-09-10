@@ -106,10 +106,7 @@ func (c *Conn) Flush() error {
 	return nil
 }
 
-func (c *Conn) Push(
-	contentType uint8,
-	data []byte,
-) error {
+func (c *Conn) Push(contentType uint8, data []byte) error {
 	var record []byte
 	if !c.state.cipherWrite {
 		record = util.ToBytes(newTLSPlainText(contentType, data))
@@ -185,4 +182,8 @@ func (c *Conn) Read(b []byte) (int, error) {
 	length = copy(b, c.recvBuf)
 	c.recvBuf = c.recvBuf[length:]
 	return length, nil
+}
+
+func (c *Conn) ReadCancel(b []byte) {
+	c.recvBuf = append(b, c.recvBuf...)
 }

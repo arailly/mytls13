@@ -19,6 +19,7 @@ const (
 
 	handshakeTypeClientHello        uint8 = 1
 	handshakeTypeServerHello        uint8 = 2
+	handshakeTypeNewSessionTicket   uint8 = 4
 	handshakeTypeCertificate        uint8 = 11
 	handshakeTypeServerKeyExchange  uint8 = 12
 	handshakeTypeClientKeyExchange  uint8 = 16
@@ -49,15 +50,6 @@ func newHandshake(
 		length:  length,
 		body:    body,
 	}
-}
-
-func readHandshakeMessage(conn *record.Conn) ([]byte, []byte) {
-	header := make([]byte, 4)
-	conn.Read(header)
-	length := util.Uint24(header[1:])
-	body := make([]byte, length.Int())
-	conn.Read(body)
-	return header, body
 }
 
 func readHandshake(conn *record.Conn) (*handshake, error) {
@@ -150,39 +142,49 @@ func StartHandshake(conn *record.Conn, config *core.Config) error {
 	}
 
 	// Certificate Verify
-	header, body := readHandshakeMessage(conn)
-	offset := 2
-	signatureLen := int(util.ToUint16(body[offset : offset+2]))
-	offset += 2
-	sig := body[offset : offset+signatureLen]
+	handshakeMsg, err = readHandshake(conn)
+	if err != nil {
+		return err
+	}
+
+	certificateVerify, err := parseCertificateVerify(handshakeMsg)
+	if err != nil {
+		return err
+	}
 	hashedMsgs := key.TranscriptHash(handshakeMsgs)
 	content := computeCertificateVerifyContent(hashedMsgs)
 	hashed := key.TranscriptHash(content)
 	rsaPubKey := certificates[0].PublicKey.(*rsa.PublicKey)
-	err = rsa.VerifyPSS(rsaPubKey, crypto.SHA256, hashed, sig, nil)
+	if err = rsa.VerifyPSS(
+		rsaPubKey,
+		crypto.SHA256,
+		hashed,
+		certificateVerify.signature,
+		nil,
+	); err != nil {
+		return err
+	}
+
+	handshakeMsgs = append(handshakeMsgs, util.ToBytes(handshakeMsg)...)
+
+	// Finished
+	handshakeMsg, err = readHandshake(conn)
 	if err != nil {
 		return err
 	}
-	handshakeMsgs = append(handshakeMsgs, header...)
-	handshakeMsgs = append(handshakeMsgs, body...)
 
-	// Finished
-	header, body = readHandshakeMessage(conn)
 	serverVerifyData := computeVerifyData(
 		conn.Keys.ServerHandshakeTrafficSecret,
 		handshakeMsgs,
 	)
-	if diff := cmp.Diff(serverVerifyData, body); diff != "" {
+	if diff := cmp.Diff(serverVerifyData, handshakeMsg.body); diff != "" {
 		return errors.New("invalid verify data")
 	}
-	handshakeMsgs = append(handshakeMsgs, header...)
-	handshakeMsgs = append(handshakeMsgs, body...)
+
+	handshakeMsgs = append(handshakeMsgs, util.ToBytes(handshakeMsg)...)
 
 	// Change Cipher Spec
-	conn.Push(
-		contentTypeChangeCipherSpec,
-		changeCipherSpecMessage,
-	)
+	conn.Push(contentTypeChangeCipherSpec, changeCipherSpecMessage)
 	conn.StartCipherWrite()
 
 	// Finished
@@ -200,6 +202,8 @@ func StartHandshake(conn *record.Conn, config *core.Config) error {
 	conn.Keys.SetAppSecret(handshakeMsgs)
 	conn.ResetReadSeqNum()
 	conn.ResetWriteSeqNum()
+
+	// TODO: process if next message is new session ticket message
 
 	return nil
 }

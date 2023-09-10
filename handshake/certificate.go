@@ -135,3 +135,20 @@ func computeCertificateVerifyContent(hashed []byte) []byte {
 	content = append(content, hashed...)
 	return content
 }
+
+type certificateVerify struct {
+	algorithm    uint16
+	signatureLen uint16
+	signature    []byte
+}
+
+func parseCertificateVerify(hs *handshake) (*certificateVerify, error) {
+	if hs.msgType != handshakeTypeCertificateVerify {
+		return nil, errors.New("invalid message type")
+	}
+	return &certificateVerify{
+		algorithm:    util.ToUint16(hs.body[0:2]),
+		signatureLen: util.ToUint16(hs.body[2:4]),
+		signature:    hs.body[4:],
+	}, nil
+}
